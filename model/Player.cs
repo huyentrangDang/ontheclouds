@@ -33,7 +33,12 @@ namespace bot {
         }
         public Hero highgestAttackEnemyHero()
         {
-            return heroes.OrderByDescending(x => x.getHeroAttack()).First();
+            var herolist = heroes.OrderByDescending(x => x.getHeroAttack());
+            foreach (var hero in herolist)
+            {
+                if(hero.isAlive()) return hero;
+            }
+            return null ;
         }
 
 

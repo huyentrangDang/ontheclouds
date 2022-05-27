@@ -297,7 +297,6 @@ namespace bot
             var enemySpirit = enemyPlayer.GetHeroByID(HeroIdEnum.AIR_SPIRIT);
             var enemyFireSpirit = enemyPlayer.GetHeroByID(HeroIdEnum.FIRE_SPIRIT);
 
-
             var data = new SFSObject();
             Console.WriteLine("dang cast:" + heroCastSkill.id);
             data.PutUtfString("casterId", heroCastSkill.id.ToString());
@@ -311,41 +310,95 @@ namespace bot
             {
                 isFireSpirit = true;
             }
+            var tempGems = new List<Gem>(grid.gems);
 
-            if (isFireSpirit && enemyCES != null && enemyCES.isAlive())
+            if (isFireSpirit)
             {
-                data.PutUtfString("targetId", enemyCES.id.ToString());
-            }
-            else if (isFireSpirit && enemyZeus != null && enemyZeus.isAlive())
-            {
-                data.PutUtfString("targetId", enemyZeus.id.ToString());
-            }
-            else if (isFireSpirit && enemybuffalow != null && enemybuffalow.isAlive())
-            {
-                data.PutUtfString("targetId", enemybuffalow.id.ToString());
-            }
-            else if (isFireSpirit && enemyFireSpirit != null && enemyFireSpirit.isAlive())
-            {
-                data.PutUtfString("targetId", enemyFireSpirit.id.ToString());
-            }
-            else if (isFireSpirit && enemyFate != null && enemyFate.isAlive())
-            {
-                data.PutUtfString("targetId", enemyFate.id.ToString());
-            }
-            else if (isFireSpirit && enemySpirit != null && enemySpirit.isAlive())
-            {
-                data.PutUtfString("targetId", enemySpirit.id.ToString());
-            }
-            else
-            {
-                data.PutUtfString("targetId", enemyPlayer.highgestAttackEnemyHero().id.ToString());
-            }
+                var currentRedGem = tempGems.Where(x => x.type == GemType.RED).Count();
+                var enemyHeroByAttack = enemyPlayer.heroes.OrderByDescending(x => x.getHeroAttack()).ToList();
+                bool canKillHero = false;
+                if(enemyCES != null && enemyCES.isAlive() && enemyCES.getHeroAttack() > 8)
+                 {
+                      data.PutUtfString("targetId", enemyCES.id.ToString());
+                 }
+                else
+                {
+                    foreach (var hero in enemyHeroByAttack)
+                            {
+                                if((hero.getHeroAttack() + currentRedGem) >= hero.getHeroHP() && hero.isAlive()
+                            && hero.id != HeroIdEnum.MONK)
+                                {
+                                    data.PutUtfString("targetId", hero.id.ToString());
+                                    canKillHero = true;
+                                    break;
+                                }
+                            }
+                if (canKillHero == false)
+                {
+                        var enemyMainHero = getEnemyMainHeroAlive(enemyPlayer);
+                        if(enemyCES != null && enemyCES.isAlive() && enemyCES.getHeroAttack() > 8)
+                        {
+                             data.PutUtfString("targetId", enemyCES.id.ToString());
+                        }
+                        else if (enemyMainHero != null)
+                        {
+                            data.PutUtfString("targetId", enemyMainHero.id.ToString());
+                        }
+                        else if (enemyCES != null && enemyCES.isAlive())
+                        {
+                            data.PutUtfString("targetId", enemyCES.id.ToString());
+                        }
+                         else if (enemybuffalow != null && enemybuffalow.isAlive())
+                        {
+                            data.PutUtfString("targetId", enemybuffalow.id.ToString());
+                        }
+                        else if (enemyZeus != null && enemyZeus.isAlive())
+                        {
+                            data.PutUtfString("targetId", enemyZeus.id.ToString());
+                        }
+                        else if (enemyFireSpirit != null && enemyFireSpirit.isAlive())
+                        {
+                            data.PutUtfString("targetId", enemyFireSpirit.id.ToString());
+                        }
+                        else if (enemyFate != null && enemyFate.isAlive())
+                        {
+                            data.PutUtfString("targetId", enemyFate.id.ToString());
+                        }
+                        else if (enemySpirit != null && enemySpirit.isAlive())
+                        {
+                            data.PutUtfString("targetId", enemySpirit.id.ToString());
+                        }
+                        else if(enemyPlayer.highgestAttackEnemyHero().id != null)
+                        {
+                            data.PutUtfString("targetId", enemyPlayer.highgestAttackEnemyHero().id.ToString());
+                        }
+                       
+                }
+                }
+                }
+              else
+               {
+                            data.PutUtfString("targetId", enemyPlayer.firstHeroAlive().id.ToString());
+                }
 
             data.PutUtfString("selectedGem", selectGem().ToString());
             data.PutUtfString("gemIndex", new Random().Next(64).ToString());
             data.PutBool("isTargetAllyOrNot", false);
             log("sendExtensionRequest()|room:" + room.Name + "|extCmd:" + ConstantCommand.USE_SKILL + "|Hero cast skill: " + heroCastSkill.name);
             sendExtensionRequest(ConstantCommand.USE_SKILL, data);
+        }
+
+        public Hero getEnemyMainHeroAlive(Player enemy)
+        {
+            var highestHero = enemy.heroes.OrderByDescending(hero => hero.getHeroAttack());
+            foreach (var hero in highestHero)
+            {
+                if(hero.getHeroAttack() > 10 && hero.isAlive() && hero.id != HeroIdEnum.MONK && hero.id != HeroIdEnum.SEA_SPIRIT)
+                {
+                    return hero;
+                }
+            }
+            return null;
         }
 
         public void SendSwapGem()

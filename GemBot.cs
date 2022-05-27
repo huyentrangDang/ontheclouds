@@ -131,6 +131,48 @@ namespace bot
             TaskSchedule(delaySwapGem, _ => SendSwapGem());
         }
 
+
+
+          public bool SwapPrioritizeGem(List<GemSwapInfo> listMatchGem, Hero mainAttackHero, Hero subAttackHero, Hero supportHero)
+        {
+            var gemPrioritizeMainAttack = listMatchGem.Where(gemMatch => gemMatch.sizeMatch > 4)
+             .Where(gemMatch => gemMatch.type == GemType.BLUE)
+             .Where(gemMatch => gemMatch.type == GemType.BROWN)
+             .FirstOrDefault();
+            if (gemPrioritizeMainAttack != null && mainAttackHero.isAlive())
+            {
+                return true;
+            }
+
+            var gemPrioritizeSubAttack = listMatchGem.Where(gemMatch => gemMatch.sizeMatch > 4)
+                .Where(gemMatch => gemMatch.type == GemType.RED)
+                .Where(gemMatch => gemMatch.type == GemType.PURPLE)
+                .FirstOrDefault();
+            if (gemPrioritizeSubAttack != null && subAttackHero.isAlive())
+            {
+                return true;
+            }
+
+            var gemPrioritizeMSupport = listMatchGem.Where(gemMatch => gemMatch.sizeMatch > 4)
+               .Where(gemMatch => gemMatch.type == GemType.YELLOW)
+               .Where(gemMatch => gemMatch.type == GemType.GREEN)
+               .FirstOrDefault();
+            if (gemPrioritizeMSupport != null && supportHero.isAlive())
+            {
+                return true;
+            }
+
+            var gemPrioritizeSword = listMatchGem.Where(gemMatch => gemMatch.sizeMatch > 4)
+               .Where(gemMatch => gemMatch.type == GemType.SWORD)
+               .FirstOrDefault();
+            if (gemPrioritizeSword != null)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
         public bool DoHeroCastSkillByOrder(Hero mainAttackHero, Hero subAttackHero, Hero supportHero)
         {
             List<GemSwapInfo> listMatchGem = grid.suggestMatch();
@@ -139,20 +181,71 @@ namespace bot
                .Where(gemMatch => gemMatch.type == GemType.YELLOW || gemMatch.type == GemType.GREEN)
                .FirstOrDefault();
 
-            if (supportHero.isAlive() && supportHero.isFullMana() )
+            if (botPlayer.firstHeroAlive().getHeroAttack() >= enemyPlayer.firstHeroAlive().getHeroHP())
+            {
+                List<GemSwapInfo> matchGemSword1 = listMatchGem.Where(gemMatch => gemMatch.type == GemType.SWORD).ToList();
+                if (matchGemSword1 != null && matchGemSword1?.Count > 0)
+                {
+                    return false;
+                }
+            }
+
+            var tempGems = new List<Gem>(grid.gems);
+            var currentRedGem = tempGems.Where(x => x.type == GemType.RED).Count();
+            var enemyHeroByAttack = enemyPlayer.heroes.OrderByDescending(x => x.getHeroAttack()).ToList();
+
+            bool canGetExtraTurn = SwapPrioritizeGem(listMatchGem,mainAttackHero,subAttackHero,supportHero);
+            if (canGetExtraTurn)
+            {
+                return false;
+            }
+
+            if (botPlayer.anyHeroFullMana() == null)
+            {
+                return false;
+            }
+
+            var supportWait = false;
+            var enemyFireSpirit = enemyPlayer.GetHeroByID(HeroIdEnum.FIRE_SPIRIT);
+            if(enemyFireSpirit != null && enemyFireSpirit.isAlive() 
+                && enemyFireSpirit.isFullMana()
+                && supportHero.isAlive() 
+                && supportHero.isFullMana() 
+                && supportHero.getHeroAttack() < 9)
+            {
+                supportWait = true;
+            }
+            if (supportHero.isAlive() && supportHero.isFullMana() && supportHero.getHeroAttack() < 9 && supportWait == false)
             {
                 TaskSchedule(delaySwapGem, _ => SendCastSkill(supportHero));
                 return true;
             }
-            else if (!supportHero.isAlive())
+            else if (supportHero.isAlive() == false)
             {
+                if(mainAttackHero.isAlive() && mainAttackHero.isFullMana() && mainAttackHero.getHeroAttack() > 8)
+                {
+                      TaskSchedule(delaySwapGem, _ => SendCastSkill(mainAttackHero));
+                    return true;
+                }
+                if (subAttackHero.isAlive() && subAttackHero.isFullMana())
+                {
+                    foreach (var hero in enemyHeroByAttack)
+                    {
+                        if((hero.getHeroAttack() + currentRedGem) >= hero.getHeroHP() && hero.isAlive())
+                        {
+                           TaskSchedule(delaySwapGem, _ => SendCastSkill(subAttackHero));
+                           return true;
+                        }
+                    }
+                 }
                 if (mainAttackHero.isAlive() && mainAttackHero.isFullMana())
                 {
                     TaskSchedule(delaySwapGem, _ => SendCastSkill(mainAttackHero));
+                    return true;
                 }
-                else if (subAttackHero.isAlive() && subAttackHero.isFullMana())
-                {
-                    TaskSchedule(delaySwapGem, _ => SendCastSkill(subAttackHero));
+                if(subAttackHero.isAlive() && subAttackHero.isFullMana()){
+                      TaskSchedule(delaySwapGem, _ => SendCastSkill(subAttackHero));
+                      return true;
                 }
             }
             else
@@ -163,9 +256,10 @@ namespace bot
                 {
                     TaskSchedule(delaySwapGem, _ => SendCastSkill(mainAttackHero));
                     return true;
-                }
-                else if (subAttackHero.isAlive() && subAttackHero.isFullMana()
-                && subAttackHero.getHeroAttack() > 8)
+                } 
+                else if (subAttackHero.isAlive() 
+                    && subAttackHero.isFullMana() 
+                    && subAttackHero.getHeroAttack() > 8)
                 {
                     TaskSchedule(delaySwapGem, _ => SendCastSkill(subAttackHero));
                     return true;
@@ -173,15 +267,38 @@ namespace bot
                 else if (mainAttackHero.isAlive()
                     && mainAttackHero.isFullMana()
                     && supportHero.getHeroMana(supportHero) <= 3
+                    && supportHero.getHeroMana(supportHero) > 0
+                    && mainAttackHero.getHeroAttack() <7
                     && matchSupportGem != null)
                 {
                     return false;
                 }
-                else if (subAttackHero.isAlive() && subAttackHero.isFullMana() 
-                    && (supportHero.getHeroMana(supportHero) > 3
-                    || matchSupportGem == null))
+                else if (subAttackHero.isAlive() 
+                    && subAttackHero.isFullMana()
+                    && subAttackHero.getHeroAttack() <7
+                    && supportHero.getHeroMana(supportHero) <= 3
+                    && supportHero.getHeroMana(supportHero) > 0
+                    && matchSupportGem != null)
+                {
+                    return false;
+                }
+                   else if (subAttackHero.isAlive() && subAttackHero.isFullMana())
                 {
                     TaskSchedule(delaySwapGem, _ => SendCastSkill(subAttackHero));
+                    return true;
+                }
+                else if(mainAttackHero.isAlive() && mainAttackHero.isFullMana())
+                {
+                    TaskSchedule(delaySwapGem, _ => SendCastSkill(mainAttackHero));
+                    return true;
+                }
+                else if(supportWait == true)
+                {
+                    return false;
+                }
+                else if(supportHero.isAlive() && supportHero.isFullMana())
+                {
+                     TaskSchedule(delaySwapGem, _ => SendCastSkill(supportHero));
                     return true;
                 }
             }
