@@ -100,7 +100,9 @@ namespace bot
 
             List<GemSwapInfo> matchSupportGem = listMatchGem
                 .Where(gemMatch => gemMatch.type == GemType.YELLOW || gemMatch.type == GemType.GREEN).ToList();
-            if (matchSupportGem != null && matchSupportGem?.Count > 0 && supportHero.isAlive() && supportHero.getHeroAttack() <= 7)
+            if (matchSupportGem != null && matchSupportGem?.Count > 0
+                && supportHero.isAlive() && supportHero.getHeroAttack() <= 7
+                && !supportHero.isFullMana())
             {
                 return EatGemByNumberOfGemMatch(matchSupportGem);
             }
@@ -108,14 +110,20 @@ namespace bot
 
             List<GemSwapInfo> matchMainAttackGem = listMatchGem
                .Where(gemMatch => gemMatch.type == GemType.BLUE || gemMatch.type == GemType.BROWN).ToList();
-            if (matchMainAttackGem != null && matchMainAttackGem?.Count > 0 && mainAttackHero.isAlive() && mainAttackHero.getHeroAttack() > 7)
+            if (matchMainAttackGem != null && matchMainAttackGem?.Count > 0 
+                && mainAttackHero.isAlive() 
+                && mainAttackHero.getHeroAttack() > 7
+                && !mainAttackHero.isFullMana())
             {
                 return EatGemByNumberOfGemMatch(matchMainAttackGem);
             }
 
             List<GemSwapInfo> matchSubAttackGem = listMatchGem
               .Where(gemMatch => gemMatch.type == GemType.RED || gemMatch.type == GemType.PURPLE).ToList();
-            if (matchSubAttackGem != null && matchSubAttackGem?.Count > 0 && subAttackHero.isAlive() && subAttackHero.getHeroAttack() > 7)
+            if (matchSubAttackGem != null && matchSubAttackGem?.Count > 0
+                && subAttackHero.isAlive() 
+                && subAttackHero.getHeroAttack() > 7 && 
+                !subAttackHero.isFullMana())
             {
                 return EatGemByNumberOfGemMatch(matchSubAttackGem);
             }
@@ -133,19 +141,22 @@ namespace bot
 
 
 
-            if (matchSupportGem != null && matchSupportGem?.Count > 0 && supportHero.isAlive())
+            if (matchSupportGem != null && matchSupportGem?.Count > 0 && supportHero.isAlive() && !supportHero.isFullMana())
             {
-                return matchSupportGem.First().getIndexSwapGem();
+                return EatGemByNumberOfGemMatch(matchSupportGem);
+
             }
 
-            if (matchMainAttackGem != null && matchMainAttackGem?.Count > 0 && mainAttackHero.isAlive())
+            if (matchMainAttackGem != null && matchMainAttackGem?.Count > 0 && mainAttackHero.isAlive() && !supportHero.isFullMana())
             {
-                return matchMainAttackGem.First().getIndexSwapGem();
+                return EatGemByNumberOfGemMatch(matchMainAttackGem);
+
             }
 
-            if (matchSubAttackGem != null && matchSubAttackGem?.Count > 0 && subAttackHero.isAlive())
+            if (matchSubAttackGem != null && matchSubAttackGem?.Count > 0 && subAttackHero.isAlive() && !supportHero.isFullMana())
             {
-                return matchSubAttackGem.First().getIndexSwapGem();
+                return EatGemByNumberOfGemMatch(matchSubAttackGem);
+
             }
 
             GemSwapInfo matchGemSword = listMatchGem.Where(gemMatch => gemMatch.type == GemType.SWORD).FirstOrDefault();
